@@ -1,6 +1,6 @@
 import jp
 import uvicorn
-from translate import Translate
+from util.translate import Translate
 import re
 
 
