@@ -84,5 +84,6 @@ def crawl_new_words():
 
 
 if __name__ == '__main__':
+    logger.info(f'before Word count: {models.Word.select().count()}')
     crawl_new_words()
     logger.info(f'Word count: {models.Word.select().count()}')
