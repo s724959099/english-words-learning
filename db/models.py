@@ -47,5 +47,4 @@ db.bind(provider='sqlite', filename='db.sqlite3', create_db=True)
 db.generate_mapping(create_tables=True)
 
 if __name__ == '__main__':
-    print(Word.select().count())
-    print()
+    print(Word.select(lambda x: x.name == 'guilty').count())
