@@ -1,9 +1,8 @@
 import jp
 import uvicorn
-import re
-import random
-import asyncio
-from crawler import SubTitleCrawler
+from db.crud import card_sentence
+from util.tool import find_most_match_word
+from util.translate import Translate
 
 
 class Word(jp.Span):
@@ -23,70 +22,32 @@ class WordInput(jp.InputChangeOnly):
         self.placeholder = text
 
 
-class Watchcard(jp.Div):
-    def __init__(self, **kwargs):
-        self.citem = None
-        kwargs['class_'] = 'w-2/3 bg-white mt-20  rounded-lg shadow p-12'
-        kwargs['style'] = 'min-height: 20rem;'
-        super().__init__(**kwargs)
-        input_ = WordInput(length=10)
-        button = jp.Button(
-            class_='text-5xl px-6 m-2 text-lg text-indigo-100 transition-colors duration-150 bg-indigo-700 rounded-lg focus:shadow-outline hover:bg-indigo-80',
-            text='送出', click=self.click)
-        self.add_component(input_)
-        self.add_component(button)
-        self.input = input_
-
-    async def click(self, _):
-        if self.input.value:
-            self.page.watch = self.input.value
-            crawler = SubTitleCrawler(self.input.value)
-            crawler.init()
-            item = self.page.name_dict['item']
-            item.delete()
-            card = Card(crawler=crawler)
-            item.add_component(card)
-            await card.build()
-
-
 class Card(jp.Div):
-    def __init__(self, crawler: SubTitleCrawler, **kwargs):
+    def __init__(self, **kwargs):
+        self.exam_id = None
         self.answer = None
         self.en = None
         self.tw = None
-        self.crawler = crawler
-        self.total_count = len(self.crawler.en_subtitles)
+        self.ts = Translate('zh-TW', 'en')
         self.count_index = 0
         self.answer_list = []
         kwargs['class_'] = 'w-2/3 bg-white mt-20  rounded-lg shadow p-12'
         kwargs['style'] = 'min-height: 20rem;'
         super().__init__(**kwargs)
 
-    def get_word(self, words):
-        exclude = ['in', 'at', 'that', 'the', 'it', 'music', 'then', 'will',
-                   'have', 'been', 'this', 'they', 'your', 'what', 'there',
-                   'were', 'here',
-                   'would', 'could', 'while', 'when', 'where']
-        count = 0
-        while True:
-            count += 1
-            ret = word = random.choice(words)
-            word = word.lower()
-            if count > len(words):
-                return ret
-            after_word_index = self.en.index(ret) + len(ret)
-            if after_word_index < len(self.en) and self.en[after_word_index] == '\'':
-                continue
-
-            if len(word) >= 4 and word not in exclude and word not in self.answer_list:
-                self.answer_list.append(word)
-                return ret
+    def get_word(self, sentence, exam):
+        ans = find_most_match_word(sentence, exam.word.name)
+        return ans
 
     async def change(self, msg):
         if msg.value.lower() == self.answer.lower():
             await self.build()
+            self.count_index = 0
         elif msg.value:
             msg.target.value = ''
+            if self.count_index == 0:
+                card_sentence.increase_mistake(self.exam_id)
+                self.count_index += 1
             await self.make_sound()
             await msg.target.temp_placeholder(self.answer)
 
@@ -101,12 +62,15 @@ class Card(jp.Div):
 
     async def build(self):
         self.delete_components()
-        en = self.crawler.en_subtitles[self.count_index]
-        tw = self.crawler.zh_subtitles[self.count_index]
+        exam = card_sentence.get_exam()
+        self.exam_id = exam.id
+        sentence = exam.sentence
+
+        en = sentence.en
+        tw = sentence.ch
         self.en = en
         self.tw = tw
-        words = re.findall(r'\w+', en)
-        word = self.get_word(words)
+        word = self.get_word(en, exam)
         self.answer = word
         st_index = en.index(word)
         ed_index = st_index + len(word)
@@ -119,8 +83,15 @@ class Card(jp.Div):
         self.add_component(Word(text=suffix_s))
         self.add_component(jp.Div(class_='bg-gray-600 h-px my-6'))
         self.add_component(jp.Div(class_='text-blue-700', text=self.tw))
+        self.add_component(jp.Div(class_='bg-gray-600 h-px my-6'))
+        self.add_component(jp.Div(class_='text-blue-700', text=self.ts.translate(self.en)))
+        self.add_component(jp.Div(class_='bg-gray-600 h-px my-6'))
+        self.add_component(jp.Div(class_='text-blue-700', text=f'{exam.word.sound}  /{exam.word.part_of_speech}'))
+        self.add_component(jp.Div(class_='bg-gray-600 h-px my-6'))
+        self.add_component(jp.Div(class_='text-blue-700', text=exam.explain.en))
+        self.add_component(jp.Div(class_='bg-gray-600 h-px my-6'))
+        self.add_component(jp.Div(class_='text-blue-700', text=exam.explain.ch))
 
-        self.count_index += 1
         print('prefix_s:', prefix_s)
         print('word:', word)
         print('suffix_s:', suffix_s)
@@ -132,10 +103,12 @@ async def demo():
     wp = jp.justpy_parser_to_wp("""
     <div class="bg-red-200 h-screen">
         <div class="flex flex-col items-center" name="item">
-        <WatchCard></WatchCard>
+        <Card name="card"></Card>
         </div>
       </div>
     """)
+    card = wp.name_dict['card']
+    await card.build()
 
     return wp
 

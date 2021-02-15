@@ -17,6 +17,7 @@ isort==5.5.2
 itsdangerous==1.1.0
 jedi==0.17.2
 Jinja2==2.11.2
+jp @ file:///Users/mac/Desktop/Projects/mygit/english-words-learning/jp-0.0.2-py3-none-any.whl
 lazy-object-proxy==1.4.3
 loguru==0.5.3
 lxml==4.6.2
@@ -31,6 +32,7 @@ psutil==5.8.0
 pycodestyle==2.6.0
 pydantic==1.7.3
 pydocstyle==5.1.1
+PyExecJS==1.5.1
 pyflakes==2.2.0
 pylint==2.6.0
 pyquery==1.4.3

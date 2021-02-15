@@ -35,7 +35,8 @@ class Exam(db.Entity):
     explain = Optional(Explain, reverse='exam')
     sentence = Optional(Sentence, reverse='exam')
     created_at = Required(datetime.datetime, default=datetime.datetime.now)
-    appear_cout = Required(int, default=1)
+    appear_count = Required(int, default=1)
+    mistake = Required(int, default=0)
 
 
 class Url(db.Entity):
