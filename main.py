@@ -43,20 +43,25 @@ class Card(jp.Div):
         if msg.value.lower() == self.answer.lower():
             await self.build()
             self.count_index = 0
-        elif msg.value:
+        elif msg.value.strip():
             msg.target.value = ''
             if self.count_index == 0:
                 card_sentence.increase_mistake(self.exam_id)
                 self.count_index += 1
             await self.make_sound()
             await msg.target.temp_placeholder(self.answer)
+        else:
+            await self.make_sound()
+            msg.target.value = ''
 
     async def make_sound(self):
+        sentence = self.en
+        sentence = sentence.replace('"', '')
         eval_text = f"""
-            let utterance = new window.SpeechSynthesisUtterance("{self.en}");
+            let utterance = new window.SpeechSynthesisUtterance("{sentence}");
             utterance.lang = 'en-US';
             window.speechSynthesis.speak(utterance)
-            console.log("{self.en}")
+            console.log("{sentence}")
             """
         await self.page.run_javascript(eval_text)
 
